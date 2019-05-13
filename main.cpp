@@ -1,146 +1,84 @@
 #define WIN32_LEAN_AND_MEAN
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define MaxSize 4096
-#pragma once
+
 #include<iostream>
 #include<fstream>
 #include<windows.h>
 #include<time.h>
-#include<string>
+#include<string.h>
 #include<stdlib.h>
 #include<vector>
-#include"SOCKET.h"
 #include<WinSock2.h>
-#include"RANK.h"
 #include<algorithm>
-#include"PLAYER.h"
-#include"BUILDER.h"
 
-
-#define information "user_information.txt"
-#define WORDS "word.txt"
 using namespace std;
-#pragma warning(disable:4996)
+
 #pragma comment(lib, "ws2_32.lib")
 
-void Begin(SOCKET _cSock)
+void send_char(SOCKET sockClient,const char s[MaxSize])
 {
-	send_(_cSock, "\t\t\t\t\t\t**************************************************\n");
-	send_(_cSock, "\t\t\t\t\t\t\tWelcome to this game!input the choice!\n");
-	send_(_cSock, "\t\t\t\t\t\t1.Create a new account for game.\n");
-	send_(_cSock, "\t\t\t\t\t\t2.Using an existed account to start.\n");
-	send_(_cSock, "\t\t\t\t\t\t3.cancel one existed account.\n");
-	send_(_cSock, "\t\t\t\t\t\t4.Create a new account for buliding Word Lib.\n");
-	send_(_cSock, "\t\t\t\t\t\t5.Using an existed account for Buliding Word Lib.\n");
-	send_(_cSock, "\t\t\t\t\t\t6.Show the rank list of the gamer\n");
-	send_(_cSock, "\t\t\t\t\t\t7.Show the rank list of the builder\n");
-	send_(_cSock, "\t\t\t\t\t\t8.Quit the game.\n");
-	send_(_cSock, "\t\t\t\t\t\t**************************************************\n");
-	send_(_cSock, "#");
+	char sendBuf[MaxSize];
+	strcpy_s(sendBuf, s);
+	int byte = send(sockClient, sendBuf, strlen(sendBuf), 0);
+	Sleep(40);
 }
 
-void game_choose(SOCKET _cSock, class PLAYER player, class BUILDER builder)
+int send_int(SOCKET sockClient, int data)
 {
-	while (1)
-	{
-		Begin(_cSock);
-		char choose_temp[MaxSize];
-		int temp_recv_len = 0;
-		temp_recv_len = recv(_cSock, choose_temp, MaxSize, 0);
-		choose_temp[temp_recv_len] = '\0';
-
-		int choose = atoi(choose_temp);
-		if (choose == 8)
-		{
-			send_(_cSock, "###");
-			return;
-		}
-		switch (choose)
-		{
-		case 1: {//注册账号
-			player.Create_new_player();
-			break;
-		}
-		case 2: {
-			player.Log_In();
-			break;
-		}
-		case 3: {
-			player.Cancel_exist_user(0);
-			break;
-		}
-		case 4: {
-			builder.Create_Builder();
-			break;
-		}
-		case 5: {
-			builder.Log_In();
-			break;
-		}
-		case 6: {
-			Rank_Player(_cSock);
-			break;
-		}
-		case 7: {
-			Rank_Builder(_cSock);
-			break;
-		}
-		default: {
-			send_(_cSock, "Please Input a Right Choice!\n");
-			send_(_cSock, "#");
-			break;
-		}
-		}
-	}
-
-
+	char sendBuf[MaxSize];
+	char buffer[20];
+	_itoa(data, buffer, 10);
+	strcpy(sendBuf, buffer);
+	cout << buffer << endl;
+	int flag = send(sockClient, sendBuf, strlen(sendBuf), 0);
+	return flag;
 }
 
-/*vector<SOCKET> g_client;
-void select_client(SOCKET _sock)
+void receive(SOCKET _sock)
 {
-	fd_set fdread;
-	fd_set fdwrite;
-	fd_set fdexp;
-
-	FD_ZERO(&fdread);
-	FD_ZERO(&fdwrite);
-	FD_ZERO(&fdexp);
-
-	FD_SET(_sock, &fdread);
-	FD_SET(_sock, &fdwrite);
-	FD_SET(_sock, &fdexp);
-
-	int flag = select(_sock + 1, &fdread, &fdwrite, &fdexp, NULL);
-	if (flag < 0)
+	char recvbuf[MaxSize];
+	int temp_recv_len = recv(_sock, recvbuf, MaxSize, 0);//接受游戏信息
+	recvbuf[temp_recv_len] = '\0';
+	
+	while (strcmp(recvbuf, "###") != 0)//退出游戏
 	{
-		send_(_sock, "failed...\n");
+		//cout << "测试用：现在是循环读取发来的消息:" << endl;
+		while (strcmp(recvbuf, "#") != 0 && strcmp(recvbuf, "###") != 0)
+		{
+			cout << recvbuf;
+			memset(recvbuf, 0, sizeof(recvbuf));
+			temp_recv_len = recv(_sock, recvbuf, MaxSize, 0);
+			recvbuf[temp_recv_len] = '\0';
+		}
+
+		if (strcmp(recvbuf, "###") != 0)
+		{
+			memset(recvbuf, 0, sizeof(recvbuf));
+			strcpy(recvbuf, " ");
+			//cout << "请输入：" << endl;
+			char send_temp[MaxSize];
+			cin >> send_temp;
+			send_char(_sock, send_temp);
+		}
 	}
-	if (FD_ISSET(_sock, &fdread))
-	{
-		FD_CLR(_sock, &fdread);
-	}
-}*/
+	cout << "Welcome again!" << endl;
+}
 
 int main()
 {
-	SOCKADDR_IN _sin;
-	SOCKET_CREATE();
+	WORD ver = MAKEWORD(2, 2);
+	WSADATA dat;
+	WSAStartup(ver, &dat);
 
 	//1.创立套接字socket
+	SOCKET _sock = socket(AF_INET, SOCK_STREAM, 0);
 
-	_sin.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+	//2.连接服务器
+	SOCKADDR_IN _sin = {};
 	_sin.sin_family = AF_INET;
 	_sin.sin_port = htons(6666);
-
-	int _sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (SOCKET_ERROR == _sock)
-	{
-		cout << "socket Create ERROR" << endl;
-	}
-	//2.bind绑定客户端
-
-	if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
+	_sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	if (SOCKET_ERROR == connect(_sock, (sockaddr*)&_sin, sizeof(SOCKADDR)))
 	{
 		cout << "ERROR,CONNETING Failed..." << endl;
 	}
@@ -149,42 +87,47 @@ int main()
 		cout << "Succeed!..." << endl;
 	}
 
-	//listen监听
-	if (SOCKET_ERROR == listen(_sock, 5))//五个监听端口
+	//3.接受服务器信息
+	char recvBuf[MaxSize]= {};
+	
+	int nlen = 0;
+	nlen=recv(_sock, recvBuf, MaxSize, 0);
+	
+	if (0 >= nlen)
 	{
 		cout << "ERROR! Listening failed..." << endl;
 	}
 	else
 	{
-		cout << "Succeed!..." << endl;
+		cout << "connecting succeed!" << endl;
 	}
-	//4.等待客户端连接成功accept
-	sockaddr_in clientAddr = {};
-	int nAddrLen = sizeof(sockaddr_in);
-	SOCKET _cSock = INVALID_SOCKET;
-	_cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrLen);
+	
+	cout << recvBuf;
 
-
-	if (_cSock == INVALID_SOCKET)
+	while (1)
 	{
-		cout << "invalid client..." << endl;
+		if (strcmp(recvBuf,"###")==0)
+			break;
+		else
+		{
+			if (strcmp(recvBuf,"#")!=0)
+			{
+				memset(recvBuf, 0, sizeof(recvBuf));
+				nlen = recv(_sock, recvBuf, MaxSize, 0);
+				cout << recvBuf;
+			}
+			else
+			{
+				char inword[MaxSize] = {};
+				cin >> inword;
+				send_char(_sock,inword);
+				memset(recvBuf, 0, sizeof(recvBuf));
+			}
+		}
+
 	}
-	else
-	{
-		cout << "Succeed!" << endl;
-	}
 
-	class PLAYER player;//建立客户类对象和服务器对象
-	player._sock = _cSock;
-	class BUILDER builder;
-	builder._sock = _cSock;
-	//5.向客户端发送消息
-
-	game_choose(_cSock, player, builder);
-
-	cout << "脱离连接" << endl;
-
-	//6.关闭套接字
+	//4.关闭套接字
 	closesocket(_sock);
 	WSACleanup();
 	//system("pause");
