@@ -1,0 +1,6 @@
+
+cairenjie	cairenjie	1	6	29	1	
+cairenjie	cairenjie	0	1	0	1	
+test1	test2	0	1	0	1	
+cai	cai	0	2	14	4	
+temp	temp	0	1	7	3	
